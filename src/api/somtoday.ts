@@ -50,8 +50,10 @@ export async function getResults(
   // Een leerling heeft een voortgangsdossier (onderbouw) of examendossier
   // (bovenbouw); we halen beide op en voegen ze samen.
   const dossiers = [
-    'geldendevoortgangsdossierresultaten',
+    'geldendvoortgangsdossierresultaten',
     'geldendexamendossierresultaten',
+    // fallback-spelling, voor de zekerheid:
+    'geldendevoortgangsdossierresultaten',
   ];
   const query = resultQuery();
   const pageSize = 100;
@@ -152,8 +154,8 @@ export async function diagnose(
 
   lines.push('— ruw cijfer-item —');
   const q = resultQuery();
+  await dumpRaw('voortgang', `/rest/v1/geldendvoortgangsdossierresultaten/leerling/${leerlingId}?${q}`, 1900, 'items=0-4');
   await dumpRaw('examen', `/rest/v1/geldendexamendossierresultaten/leerling/${leerlingId}?${q}`, 1900, 'items=0-4');
-  await dumpRaw('voortgang', `/rest/v1/geldendevoortgangsdossierresultaten/leerling/${leerlingId}?${q}`, 1900, 'items=0-4');
 
   return lines.join('\n');
 }
