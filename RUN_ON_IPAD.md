@@ -33,6 +33,22 @@ Codespace** (cloud-terminal in je browser) en de app laadt in de gratis
 > scannen (je kunt je eigen scherm niet filmen). De account-login uit stap 2
 > is daarom de makkelijkste manier — dan hoef je niks te scannen.
 
+## `npm run tunnel` geeft "failed to start tunnel / remote gone away"?
+
+Dat is een storing van de ngrok-dienst (de tunnel die `--tunnel` gebruikt), niet
+van de app. Twee opties:
+
+1. **Gewoon opnieuw proberen** — ngrok-hikjes zijn meestal tijdelijk.
+2. **Zonder ngrok, via Codespaces' eigen poort** (betrouwbaarder):
+   ```bash
+   npm run codespace
+   ```
+   Dit zet automatisch de juiste proxy-URL. Daarna nog één keer handmatig:
+   ga naar het tabblad **POORTEN** onderin, rechtermuisklik op poort **8081** →
+   **Port Visibility** → **Public**. (Zonder dit krijgt je iPad een
+   GitHub-loginpagina i.p.v. de app.) Som verschijnt daarna in Expo Go onder
+   **"Development servers"**.
+
 ## Inloggen in de app
 
 Kies je school, log in op het echte Somtoday-scherm (ook SSO werkt), en je
