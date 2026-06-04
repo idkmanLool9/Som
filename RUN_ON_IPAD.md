@@ -39,15 +39,15 @@ Dat is een storing van de ngrok-dienst (de tunnel die `--tunnel` gebruikt), niet
 van de app. Twee opties:
 
 1. **Gewoon opnieuw proberen** — ngrok-hikjes zijn meestal tijdelijk.
-2. **Zonder ngrok, via Codespaces' eigen poort** (betrouwbaarder):
+2. **Zonder ngrok, via een Cloudflare-tunnel** (geen account, geen
+   poort-instellingen nodig):
    ```bash
    npm run codespace
    ```
-   Dit zet automatisch de juiste proxy-URL. Daarna nog één keer handmatig:
-   ga naar het tabblad **POORTEN** onderin, rechtermuisklik op poort **8081** →
-   **Port Visibility** → **Public**. (Zonder dit krijgt je iPad een
-   GitHub-loginpagina i.p.v. de app.) Som verschijnt daarna in Expo Go onder
-   **"Development servers"**.
+   Dit downloadt eenmalig `cloudflared`, opent een publieke tunnel naar poort
+   8081 en geeft die URL automatisch aan Expo mee. Je hoeft dus **niets** op
+   'Public' te zetten. Som verschijnt in Expo Go onder **"Development servers"**
+   (mits je via `npx expo login` op hetzelfde account bent ingelogd).
 
 ## Inloggen in de app
 
