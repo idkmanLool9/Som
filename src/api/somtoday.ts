@@ -116,15 +116,16 @@ export async function diagnose(
   };
 
   // Toont de volledige (ruwe) JSON van het eerste item van een endpoint.
-  const dumpRaw = async (label: string, path: string, maxLen = 1400) => {
+  const dumpRaw = async (label: string, path: string, maxLen = 1400, range = 'items=0-0') => {
     try {
-      const r = await client.tryGet<any>(path, undefined, 'items=0-0');
+      const r = await client.tryGet<any>(path, undefined, range);
       if (!r.ok) {
         lines.push(`${label} → ${r.status}`);
         return;
       }
+      const count = Array.isArray(r.data?.items) ? r.data.items.length : '?';
       const item = r.data?.items ? r.data.items[0] : r.data;
-      lines.push(`${label}: ${JSON.stringify(item ?? {}).slice(0, maxLen)}`);
+      lines.push(`${label} (n=${count}): ${JSON.stringify(item ?? {}).slice(0, maxLen)}`);
     } catch (e) {
       lines.push(`${label} ERR: ${e instanceof Error ? e.message.slice(0, 50) : ''}`);
     }
@@ -151,8 +152,8 @@ export async function diagnose(
 
   lines.push('— ruw cijfer-item —');
   const q = resultQuery();
-  await dumpRaw('examen', `/rest/v1/geldendexamendossierresultaten/leerling/${leerlingId}?${q}`, 1800);
-  await dumpRaw('voortgang', `/rest/v1/geldendevoortgangsdossierresultaten/leerling/${leerlingId}?${q}`, 1800);
+  await dumpRaw('examen', `/rest/v1/geldendexamendossierresultaten/leerling/${leerlingId}?${q}`, 1900, 'items=0-4');
+  await dumpRaw('voortgang', `/rest/v1/geldendevoortgangsdossierresultaten/leerling/${leerlingId}?${q}`, 1900, 'items=0-4');
 
   return lines.join('\n');
 }
