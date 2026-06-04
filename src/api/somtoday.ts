@@ -114,9 +114,8 @@ export async function diagnose(
     }
   };
 
-  // Toont de keys + (eerste) JSON van een item, om verborgen velden/links/ids
-  // te vinden.
-  const dumpItem = async (label: string, path: string) => {
+  // Toont de volledige (ruwe) JSON van het eerste item van een endpoint.
+  const dumpRaw = async (label: string, path: string, maxLen = 1400) => {
     try {
       const r = await client.tryGet<any>(path, undefined, 'items=0-0');
       if (!r.ok) {
@@ -124,50 +123,35 @@ export async function diagnose(
         return;
       }
       const item = r.data?.items ? r.data.items[0] : r.data;
-      const keys = item ? Object.keys(item).join(',') : '(leeg)';
-      lines.push(`${label} keys: ${keys}`);
-      const links = item?.links ?? [];
-      for (const l of links) lines.push(`  ${l.rel} → ${l.href}`);
-      const json = JSON.stringify(item ?? {}).slice(0, 350);
-      lines.push(`  json: ${json}`);
+      lines.push(`${label}: ${JSON.stringify(item ?? {}).slice(0, maxLen)}`);
     } catch (e) {
       lines.push(`${label} ERR: ${e instanceof Error ? e.message.slice(0, 50) : ''}`);
     }
   };
 
-  lines.push('— endpoints —');
-  // Mogelijke namen voor de cijfers/resultaten-resource.
-  await probe('resultaten', '/rest/v1/resultaten');
-  await probe('huidigVoorLeerling', `/rest/v1/resultaten/huidigVoorLeerling/${leerlingId}`);
-  await probe('cijfers', '/rest/v1/cijfers');
-  await probe('cijferoverzicht', '/rest/v1/cijferoverzicht');
-  await probe('toetsresultaten', '/rest/v1/toetsresultaten');
-  await probe('voortgangsdossier', '/rest/v1/voortgangsdossier');
-  await probe('resultaatkolommen', '/rest/v1/resultaatkolommen');
-  await probe('vakkeuzes', '/rest/v1/vakkeuzes');
-  await probe('lesgroepen', '/rest/v1/lesgroepen');
-  await probe('afspraken', '/rest/v1/afspraken');
-
-  lines.push('— inhoud —');
-  await dumpItem('vakken', '/rest/v1/vakken');
-
-  // Toegestane gegevenstypen uit accountPermissions: dit verklapt welke
-  // resource(s) de cijfers bevatten.
-  lines.push('— toegestane types —');
+  // Account-id ophalen (voor een extra poging met dat id).
+  let accountId: number | undefined;
   try {
     const acc = await client.tryGet<any>('/rest/v1/account', undefined, 'items=0-0');
     const item = acc.data?.items ? acc.data.items[0] : acc.data;
-    const perms: any[] = item?.accountPermissions ?? item?.permissions ?? [];
-    const types = new Set<string>();
-    for (const p of perms) {
-      const full = typeof p === 'string' ? p : p?.full ?? p?.type ?? '';
-      const type = String(full).split(':')[0];
-      if (type) types.add(type);
-    }
-    lines.push([...types].sort().join('\n') || '(geen)');
-  } catch (e) {
-    lines.push(`ERR: ${e instanceof Error ? e.message.slice(0, 60) : ''}`);
+    accountId = item?.links?.find((l: any) => l.rel === 'self')?.id;
+  } catch {
+    // negeren
   }
+
+  lines.push('— endpoints —');
+  await probe('huidigVoorLeerling(leerling)', `/rest/v1/resultaten/huidigVoorLeerling/${leerlingId}`);
+  // Ook met het account-id proberen.
+  if (accountId) {
+    await probe('huidigVoorLeerling(account)', `/rest/v1/resultaten/huidigVoorLeerling/${accountId}`);
+  }
+  await probe('vakkeuzes', '/rest/v1/vakkeuzes');
+  await probe('afspraken', '/rest/v1/afspraken');
+
+  lines.push('— ruwe JSON —');
+  await dumpRaw('account', '/rest/v1/account', 1800);
+  await dumpRaw('leerling', `/rest/v1/leerlingen/${leerlingId}`, 1000);
+  await dumpRaw('afspraak', '/rest/v1/afspraken', 1000);
 
   return lines.join('\n');
 }
