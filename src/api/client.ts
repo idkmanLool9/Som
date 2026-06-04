@@ -44,8 +44,12 @@ export class SomtodayClient {
     this.setSession(next);
   }
 
-  /** Doet een GET-request naar een REST-pad en parset JSON. */
-  async get<T>(path: string, query?: Record<string, string>, range?: string): Promise<T> {
+  /** Voert het verzoek uit met geldig token (vernieuwt bij een 401). */
+  private async request(
+    path: string,
+    query?: Record<string, string>,
+    range?: string
+  ): Promise<Response> {
     await this.ensureValidToken();
     const doFetch = async (): Promise<Response> => {
       const url = new URL(path, this.session.apiUrl);
@@ -65,10 +69,33 @@ export class SomtodayClient {
       await this.doRefresh();
       res = await doFetch();
     }
+    return res;
+  }
+
+  /** Doet een GET-request naar een REST-pad en parset JSON. */
+  async get<T>(path: string, query?: Record<string, string>, range?: string): Promise<T> {
+    const res = await this.request(path, query, range);
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       throw new Error(`API-fout ${res.status} bij ${path}: ${text.slice(0, 200)}`);
     }
     return (await res.json()) as T;
+  }
+
+  /**
+   * Als `get`, maar geeft de statuscode terug i.p.v. te gooien bij 4xx/5xx.
+   * Handig om meerdere kandidaat-endpoints te proberen.
+   */
+  async tryGet<T>(
+    path: string,
+    query?: Record<string, string>,
+    range?: string
+  ): Promise<{ ok: boolean; status: number; data: T | null }> {
+    const res = await this.request(path, query, range);
+    if (!res.ok) {
+      await res.text().catch(() => '');
+      return { ok: false, status: res.status, data: null };
+    }
+    return { ok: true, status: res.status, data: (await res.json()) as T };
   }
 }

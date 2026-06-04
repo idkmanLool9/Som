@@ -33,23 +33,58 @@ export async function getResults(
   client: SomtodayClient,
   leerlingId: number
 ): Promise<RawResult[]> {
-  const all: RawResult[] = [];
+  // Bekende varianten van het resultaten-endpoint. We proberen ze op volgorde
+  // en gebruiken de eerste die werkt (zodat de app zich aanpast als Somtoday
+  // het endpoint wijzigt).
+  const pathCandidates = [
+    `/rest/v1/resultaten/huidigVoorLeerling/${leerlingId}`,
+    `/rest/v1/resultaten/recentVoorLeerling/${leerlingId}`,
+    `/rest/v1/resultaten/leerling/${leerlingId}`,
+  ];
+  // Query-variant (id als parameter i.p.v. in het pad).
+  const queryCandidates: { path: string; query: Record<string, string> }[] = [
+    { path: '/rest/v1/resultaten', query: { leerling: String(leerlingId) } },
+  ];
+
   const pageSize = 100;
-  let start = 0;
-  // Veiligheidslimiet tegen oneindige loops.
-  for (let page = 0; page < 50; page++) {
-    const end = start + pageSize - 1;
-    const data = await client.get<ItemsResponse<RawResult>>(
-      `/rest/v1/resultaten/huidigVoorLeerling/${leerlingId}`,
-      undefined,
-      `items=${start}-${end}`
-    );
-    const items = data.items ?? [];
-    all.push(...items);
-    if (items.length < pageSize) break;
-    start += pageSize;
+  const tried: string[] = [];
+
+  const paginate = async (
+    path: string,
+    query?: Record<string, string>
+  ): Promise<RawResult[] | null> => {
+    const all: RawResult[] = [];
+    let start = 0;
+    for (let page = 0; page < 50; page++) {
+      const end = start + pageSize - 1;
+      const res = await client.tryGet<ItemsResponse<RawResult>>(
+        path,
+        query,
+        `items=${start}-${end}`
+      );
+      if (page === 0 && !res.ok) {
+        tried.push(`${path} → ${res.status}`);
+        return null; // endpoint bestaat niet; volgende kandidaat proberen
+      }
+      if (!res.ok) break;
+      const items = res.data?.items ?? [];
+      all.push(...items);
+      if (items.length < pageSize) break;
+      start += pageSize;
+    }
+    return all;
+  };
+
+  for (const path of pathCandidates) {
+    const items = await paginate(path);
+    if (items !== null) return items;
   }
-  return all;
+  for (const { path, query } of queryCandidates) {
+    const items = await paginate(path, query);
+    if (items !== null) return items;
+  }
+
+  throw new Error(`Geen werkend cijfer-endpoint gevonden. Geprobeerd: ${tried.join(' | ')}`);
 }
 
 /** Haalt huiswerk/studiewijzer-items op binnen een datumbereik (yyyy-MM-dd). */
