@@ -53,13 +53,21 @@ export async function createAuthRequest(tenantUuid?: string): Promise<AuthReques
 /**
  * Haalt `code` (en optioneel `state`) uit een redirect-URL.
  * Geeft null als dit geen geldige callback is.
+ *
+ * We matchen op het `somtoday://`-schema + aanwezigheid van een `code`, zodat
+ * het ook werkt als het exacte pad of hoofdlettergebruik iets afwijkt.
  */
 export function parseCallbackUrl(
   url: string
 ): { code: string; state: string | null } | null {
-  if (!url.startsWith(REDIRECT_URI.split('?')[0])) return null;
-  const query = url.includes('?') ? url.slice(url.indexOf('?') + 1) : '';
-  const params = new URLSearchParams(query);
+  if (!url) return null;
+  const isCallback =
+    url.startsWith('somtoday://') || url.startsWith(REDIRECT_URI.split('?')[0]);
+  if (!isCallback) return null;
+  // Code kan in de query (?) of (zelden) in het fragment (#) staan.
+  const sep = url.includes('?') ? '?' : url.includes('#') ? '#' : '';
+  if (!sep) return null;
+  const params = new URLSearchParams(url.slice(url.indexOf(sep) + 1));
   const code = params.get('code');
   if (!code) return null;
   return { code, state: params.get('state') };

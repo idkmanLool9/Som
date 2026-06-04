@@ -63,6 +63,8 @@ export default function LoginScreen() {
         ) : (
           <WebView
             source={{ uri: auth.authorizeUrl }}
+            originWhitelist={['*']}
+            setSupportMultipleWindows={false}
             onShouldStartLoadWithRequest={(req) => {
               // Onderschep de somtoday:// deeplink i.p.v. hem te laten laden.
               if (parseCallbackUrl(req.url)) {
@@ -72,6 +74,12 @@ export default function LoginScreen() {
               return true;
             }}
             onNavigationStateChange={(nav: WebViewNavigation) => void handleUrl(nav.url)}
+            onError={(e) => {
+              // iOS kan een mislukte custom-scheme-load melden i.p.v. hem te
+              // onderscheppen; vang de code dan alsnog uit de fout-URL.
+              const url = e.nativeEvent.url;
+              if (url && parseCallbackUrl(url)) void handleUrl(url);
+            }}
             incognito
             startInLoadingState
             renderLoading={() => <Loading />}
