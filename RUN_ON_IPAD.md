@@ -38,3 +38,11 @@ Codespace** (cloud-terminal in je browser) en de app laadt in de gratis
 Kies je school, log in op het echte Somtoday-scherm (ook SSO werkt), en je
 cijfers verschijnen. Werkt iets in de Somtoday-data niet? Geef de foutmelding
 door, dan pas ik de API-aanroep aan.
+
+## "Project is incompatible with this version of Expo Go"?
+
+De App Store biedt op iPhone/iPad maar één Expo Go-versie aan (op dit moment
+**SDK 54**). Dit project is daarom op **Expo SDK 54** gezet zodat het in de
+gewone Expo Go uit de App Store draait. Zorg dat je Expo Go up-to-date is en je
+zou deze melding niet meer moeten zien.
+
