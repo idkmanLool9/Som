@@ -13,12 +13,28 @@ import type { School, Session, TokenResponse } from './types';
 /** Haalt de lijst met scholen op en sorteert op naam. */
 export async function fetchSchools(): Promise<School[]> {
   const res = await fetch(ORGANISATIES_URL, {
-    headers: { Accept: 'application/json' },
+    headers: {
+      Accept: 'application/json',
+      // Sommige edge-/CDN-lagen serveren een HTML-pagina als de request niet
+      // op een browser lijkt; een nette User-Agent voorkomt dat.
+      'User-Agent': 'Som/1.0 (Expo; React Native)',
+    },
   });
+  const body = await res.text();
   if (!res.ok) {
-    throw new Error(`Kon scholenlijst niet laden (HTTP ${res.status})`);
+    throw new Error(`Kon scholenlijst niet laden (HTTP ${res.status}).`);
   }
-  const data = await res.json();
+  let data: unknown;
+  try {
+    data = JSON.parse(body);
+  } catch {
+    // We kregen geen JSON terug (vaak een HTML redirect/blokkadepagina).
+    const snippet = body.replace(/\s+/g, ' ').trim().slice(0, 120);
+    throw new Error(
+      `Scholenlijst gaf geen JSON terug (HTTP ${res.status}). Begin van het ` +
+        `antwoord: "${snippet}". Mogelijk blokkeert je netwerk Somtoday.`
+    );
+  }
   // organisaties.json is een array van { instellingen: School[] } of een platte lijst.
   const scholen: School[] = [];
   const push = (s: any) => {
