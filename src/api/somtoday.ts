@@ -87,6 +87,63 @@ export async function getResults(
   throw new Error(`Geen werkend cijfer-endpoint gevonden. Geprobeerd: ${tried.join(' | ')}`);
 }
 
+/**
+ * Diagnostische probe: test bekende endpoints en leest de HATEOAS-links uit het
+ * leerling-/account-object. De hrefs verklappen vaak de juiste resultaten-URL.
+ * Geeft een (kopieerbaar) tekstrapport terug.
+ */
+export async function diagnose(
+  client: SomtodayClient,
+  leerlingId: number
+): Promise<string> {
+  const lines: string[] = [];
+
+  const probe = async (label: string, path: string, query?: Record<string, string>) => {
+    try {
+      const r = await client.tryGet<any>(path, query, 'items=0-0');
+      let extra = '';
+      if (r.ok && r.data) {
+        if (Array.isArray(r.data.items)) extra = ` items=${r.data.items.length}`;
+        else if (r.data.links) extra = ' obj';
+      }
+      lines.push(`${r.status} ${label}${extra}`);
+    } catch (e) {
+      lines.push(`ERR ${label}: ${e instanceof Error ? e.message.slice(0, 50) : ''}`);
+    }
+  };
+
+  const dumpLinks = async (label: string, path: string) => {
+    try {
+      const r = await client.tryGet<any>(path);
+      if (!r.ok) {
+        lines.push(`${label} → ${r.status}`);
+        return;
+      }
+      const item = r.data?.items ? r.data.items[0] : r.data;
+      const links = item?.links ?? [];
+      if (links.length === 0) lines.push(`${label}: (geen links)`);
+      for (const l of links) lines.push(`${label} ${l.rel} → ${l.href}`);
+    } catch (e) {
+      lines.push(`${label} ERR: ${e instanceof Error ? e.message.slice(0, 50) : ''}`);
+    }
+  };
+
+  lines.push('— endpoints —');
+  await probe('huidigVoorLeerling', `/rest/v1/resultaten/huidigVoorLeerling/${leerlingId}`);
+  await probe('recentVoorLeerling', `/rest/v1/resultaten/recentVoorLeerling/${leerlingId}`);
+  await probe('resultaten?leerling', '/rest/v1/resultaten', { leerling: String(leerlingId) });
+  await probe('leerling/{id}/resultaten', `/rest/v1/leerlingen/${leerlingId}/resultaten`);
+  await probe('account', '/rest/v1/account');
+  await probe('vakken', '/rest/v1/vakken');
+  await probe('huiswerk', '/rest/v1/studiewijzeritemafspraaktoekenningen');
+
+  lines.push('— links —');
+  await dumpLinks('leerling', `/rest/v1/leerlingen/${leerlingId}`);
+  await dumpLinks('account', '/rest/v1/account');
+
+  return lines.join('\n');
+}
+
 /** Haalt huiswerk/studiewijzer-items op binnen een datumbereik (yyyy-MM-dd). */
 export async function getHomework(
   client: SomtodayClient,

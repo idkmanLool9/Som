@@ -1,8 +1,9 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ErrorView, Loading } from '../components/ui';
+import { diagnose, getStudentId } from '../api/somtoday';
+import { Button, ErrorView, Loading } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useGrades } from '../hooks/useGrades';
 import { formatGrade, type SubjectGrades } from '../logic/grades';
@@ -14,9 +15,51 @@ type Props = NativeStackScreenProps<GradesStackParamList, 'GradesList'>;
 export default function GradesScreen({ navigation }: Props) {
   const { client } = useAuth();
   const { loading, error, subjects, overall, student, reload } = useGrades(client);
+  const [report, setReport] = useState<string | null>(null);
+  const [diagnosing, setDiagnosing] = useState(false);
+
+  const runDiagnose = async () => {
+    if (!client || !student) return;
+    const id = getStudentId(student);
+    if (!id) return;
+    setDiagnosing(true);
+    try {
+      setReport(await diagnose(client, id));
+    } catch (e) {
+      setReport(e instanceof Error ? e.message : 'Diagnose mislukt');
+    } finally {
+      setDiagnosing(false);
+    }
+  };
 
   if (loading) return <Loading label="Cijfers laden…" />;
-  if (error) return <ErrorView message={error} onRetry={reload} />;
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScrollView contentContainerStyle={styles.errorScroll}>
+          <ErrorView message={error} onRetry={reload} />
+          <View style={styles.diagWrap}>
+            <Button
+              title={diagnosing ? 'Bezig…' : 'Diagnose verbinding'}
+              variant="ghost"
+              onPress={runDiagnose}
+              disabled={diagnosing || !student}
+            />
+            {report ? (
+              <View style={styles.reportBox}>
+                <Text style={styles.reportHint}>
+                  Houd ingedrukt om te kopiëren en stuur dit naar de ontwikkelaar:
+                </Text>
+                <Text selectable style={styles.reportText}>
+                  {report}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -77,6 +120,18 @@ function SubjectRow({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  errorScroll: { flexGrow: 1, justifyContent: 'center', padding: spacing.lg },
+  diagWrap: { marginTop: spacing.xl },
+  reportBox: {
+    marginTop: spacing.md,
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  reportHint: { fontSize: 12, color: colors.textMuted, marginBottom: spacing.sm },
+  reportText: { fontSize: 12, color: colors.text, fontFamily: 'Courier' },
   list: { padding: spacing.lg },
   headerCard: {
     backgroundColor: colors.primary,
