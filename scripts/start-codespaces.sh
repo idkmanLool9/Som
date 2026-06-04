@@ -21,6 +21,16 @@ CF_LOG="${TMPDIR:-/tmp}/cloudflared.log"
 echo "→ Dependencies synchroniseren (npm install)…"
 npm install --no-audit --no-fund
 
+# 0b. Controleer of je bij Expo bent ingelogd; anders verschijnt de app niet
+#     vanzelf in Expo Go onder "Development servers".
+if ! npx expo whoami >/dev/null 2>&1; then
+  echo ""
+  echo "⚠️  Je bent nog niet ingelogd bij Expo."
+  echo "    Run eenmalig:  npx expo login"
+  echo "    (met hetzelfde account als in de Expo Go-app op je iPad)"
+  echo ""
+fi
+
 # 1. cloudflared ophalen indien nodig (klein, eenmalig).
 if command -v cloudflared >/dev/null 2>&1; then
   CF_BIN="$(command -v cloudflared)"

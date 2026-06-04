@@ -2,12 +2,15 @@
   "name": "Som (Expo)",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
   "postCreateCommand": "npm install",
+  "postAttachCommand": {
+    "dev-server": "npm run codespace"
+  },
   "customizations": {
     "vscode": {
       "extensions": ["expo.vscode-expo-tools", "dbaeumer.vscode-eslint"]
     },
     "codespaces": {
-      "openFiles": ["README.md"]
+      "openFiles": ["RUN_ON_IPAD.md"]
     }
   },
   "forwardPorts": [8081, 19000, 19001, 19006]
