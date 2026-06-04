@@ -87,7 +87,27 @@ export default function GradesScreen({ navigation }: Props) {
           />
         )}
         ListEmptyComponent={
-          <Text style={styles.empty}>Nog geen cijfers gevonden.</Text>
+          <View>
+            <Text style={styles.empty}>Nog geen cijfers gevonden.</Text>
+            <View style={styles.diagWrap}>
+              <Button
+                title={diagnosing ? 'Bezig…' : 'Diagnose verbinding'}
+                variant="ghost"
+                onPress={runDiagnose}
+                disabled={diagnosing || !student}
+              />
+              {report ? (
+                <View style={styles.reportBox}>
+                  <Text style={styles.reportHint}>
+                    Houd ingedrukt om te kopiëren en plak dit in de chat:
+                  </Text>
+                  <Text selectable style={styles.reportText}>
+                    {report}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
         }
       />
     </SafeAreaView>

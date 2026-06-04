@@ -149,10 +149,10 @@ export async function diagnose(
   await probe('vakkeuzes', '/rest/v1/vakkeuzes');
   await probe('afspraken', '/rest/v1/afspraken');
 
-  lines.push('— ruwe JSON —');
-  await dumpRaw('account', '/rest/v1/account', 1800);
-  await dumpRaw('leerling', `/rest/v1/leerlingen/${leerlingId}`, 1000);
-  await dumpRaw('afspraak', '/rest/v1/afspraken', 1000);
+  lines.push('— ruw cijfer-item —');
+  const q = resultQuery();
+  await dumpRaw('examen', `/rest/v1/geldendexamendossierresultaten/leerling/${leerlingId}?${q}`, 1800);
+  await dumpRaw('voortgang', `/rest/v1/geldendevoortgangsdossierresultaten/leerling/${leerlingId}?${q}`, 1800);
 
   return lines.join('\n');
 }
