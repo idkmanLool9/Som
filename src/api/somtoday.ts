@@ -114,35 +114,43 @@ export async function diagnose(
     }
   };
 
-  const dumpLinks = async (label: string, path: string) => {
+  // Toont de keys + (eerste) JSON van een item, om verborgen velden/links/ids
+  // te vinden.
+  const dumpItem = async (label: string, path: string) => {
     try {
-      const r = await client.tryGet<any>(path);
+      const r = await client.tryGet<any>(path, undefined, 'items=0-0');
       if (!r.ok) {
         lines.push(`${label} → ${r.status}`);
         return;
       }
       const item = r.data?.items ? r.data.items[0] : r.data;
+      const keys = item ? Object.keys(item).join(',') : '(leeg)';
+      lines.push(`${label} keys: ${keys}`);
       const links = item?.links ?? [];
-      if (links.length === 0) lines.push(`${label}: (geen links)`);
-      for (const l of links) lines.push(`${label} ${l.rel} → ${l.href}`);
+      for (const l of links) lines.push(`  ${l.rel} → ${l.href}`);
+      const json = JSON.stringify(item ?? {}).slice(0, 350);
+      lines.push(`  json: ${json}`);
     } catch (e) {
       lines.push(`${label} ERR: ${e instanceof Error ? e.message.slice(0, 50) : ''}`);
     }
   };
 
   lines.push('— endpoints —');
-  await probe('resultaten (plain)', '/rest/v1/resultaten');
+  // Mogelijke namen voor de cijfers/resultaten-resource.
+  await probe('resultaten', '/rest/v1/resultaten');
   await probe('huidigVoorLeerling', `/rest/v1/resultaten/huidigVoorLeerling/${leerlingId}`);
-  await probe('recentVoorLeerling', `/rest/v1/resultaten/recentVoorLeerling/${leerlingId}`);
-  await probe('resultaten?leerling', '/rest/v1/resultaten', { leerling: String(leerlingId) });
-  await probe('leerling/{id}/resultaten', `/rest/v1/leerlingen/${leerlingId}/resultaten`);
-  await probe('account', '/rest/v1/account');
-  await probe('vakken', '/rest/v1/vakken');
-  await probe('huiswerk', '/rest/v1/studiewijzeritemafspraaktoekenningen');
+  await probe('cijfers', '/rest/v1/cijfers');
+  await probe('cijferoverzicht', '/rest/v1/cijferoverzicht');
+  await probe('toetsresultaten', '/rest/v1/toetsresultaten');
+  await probe('voortgangsdossier', '/rest/v1/voortgangsdossier');
+  await probe('resultaatkolommen', '/rest/v1/resultaatkolommen');
+  await probe('vakkeuzes', '/rest/v1/vakkeuzes');
+  await probe('lesgroepen', '/rest/v1/lesgroepen');
+  await probe('afspraken', '/rest/v1/afspraken');
 
-  lines.push('— links —');
-  await dumpLinks('leerling', `/rest/v1/leerlingen/${leerlingId}`);
-  await dumpLinks('account', '/rest/v1/account');
+  lines.push('— inhoud —');
+  await dumpItem('account', '/rest/v1/account');
+  await dumpItem('vakken', '/rest/v1/vakken');
 
   return lines.join('\n');
 }
