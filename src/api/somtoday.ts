@@ -37,6 +37,8 @@ export async function getResults(
   // en gebruiken de eerste die werkt (zodat de app zich aanpast als Somtoday
   // het endpoint wijzigt).
   const pathCandidates = [
+    // Token-gescoped (zoals /rest/v1/vakken en /huiswerk die wél werken).
+    '/rest/v1/resultaten',
     `/rest/v1/resultaten/huidigVoorLeerling/${leerlingId}`,
     `/rest/v1/resultaten/recentVoorLeerling/${leerlingId}`,
     `/rest/v1/resultaten/leerling/${leerlingId}`,
@@ -129,6 +131,7 @@ export async function diagnose(
   };
 
   lines.push('— endpoints —');
+  await probe('resultaten (plain)', '/rest/v1/resultaten');
   await probe('huidigVoorLeerling', `/rest/v1/resultaten/huidigVoorLeerling/${leerlingId}`);
   await probe('recentVoorLeerling', `/rest/v1/resultaten/recentVoorLeerling/${leerlingId}`);
   await probe('resultaten?leerling', '/rest/v1/resultaten', { leerling: String(leerlingId) });
