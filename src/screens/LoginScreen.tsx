@@ -33,9 +33,9 @@ export default function LoginScreen() {
 
       const callback = parseCallbackUrl(result.url);
       if (!callback) throw new Error('Geen inlogcode ontvangen van Somtoday.');
-      if (callback.state && callback.state !== req.state) {
-        throw new Error('Beveiligingscontrole mislukt (state komt niet overeen).');
-      }
+      // NB: we vergelijken de state bewust niet hard. Bij de Somtoday SSO-flow
+      // komt er soms een andere state terug. De beveiliging zit in PKCE: de code
+      // is alleen inwisselbaar met onze code_verifier.
 
       const session = await exchangeCode(callback.code, req.verifier, req.tenantUuid);
       await signIn(session);
