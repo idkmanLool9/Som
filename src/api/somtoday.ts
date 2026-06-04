@@ -149,8 +149,25 @@ export async function diagnose(
   await probe('afspraken', '/rest/v1/afspraken');
 
   lines.push('— inhoud —');
-  await dumpItem('account', '/rest/v1/account');
   await dumpItem('vakken', '/rest/v1/vakken');
+
+  // Toegestane gegevenstypen uit accountPermissions: dit verklapt welke
+  // resource(s) de cijfers bevatten.
+  lines.push('— toegestane types —');
+  try {
+    const acc = await client.tryGet<any>('/rest/v1/account', undefined, 'items=0-0');
+    const item = acc.data?.items ? acc.data.items[0] : acc.data;
+    const perms: any[] = item?.accountPermissions ?? item?.permissions ?? [];
+    const types = new Set<string>();
+    for (const p of perms) {
+      const full = typeof p === 'string' ? p : p?.full ?? p?.type ?? '';
+      const type = String(full).split(':')[0];
+      if (type) types.add(type);
+    }
+    lines.push([...types].sort().join('\n') || '(geen)');
+  } catch (e) {
+    lines.push(`ERR: ${e instanceof Error ? e.message.slice(0, 60) : ''}`);
+  }
 
   return lines.join('\n');
 }
