@@ -41,14 +41,7 @@ export function useGrades(client: SomtodayClient | null): GradesData {
       const raws = await getResults(client, id);
       setSubjects(groupBySubject(normalizeResults(raws)));
     } catch (e) {
-      let msg = e instanceof Error ? e.message : 'Onbekende fout';
-      // Tijdelijke diagnostiek: laat zien welke leerling-links + API-url er zijn,
-      // zodat we het juiste resultaten-endpoint/id kunnen bepalen.
-      if (me) {
-        const links = (me.links ?? []).map((l) => `${l.rel}:${l.id}`).join(', ');
-        msg += `\n\n[debug] apiUrl=${client.getSession().apiUrl}\nlinks=[${links}]`;
-      }
-      setError(msg);
+      setError(e instanceof Error ? e.message : 'Onbekende fout');
     } finally {
       setLoading(false);
     }

@@ -56,33 +56,68 @@ function classifyKind(rawType: string | undefined): GradeKind {
   const t = (rawType ?? '').toLowerCase();
   if (t.includes('gemiddelde')) return 'periodeGemiddelde';
   if (t.includes('rapport')) return 'rapport';
-  if (t.includes('toets')) return 'toets';
-  return 'other';
+  // Het cijfer-endpoint filtert al op echte cijferkolommen (toets, deeltoets,
+  // werkstuk, advies); die tellen we allemaal mee.
+  return 'toets';
+}
+
+function firstNumber(...vals: unknown[]): number | null {
+  for (const v of vals) {
+    const n = parseDutchNumber(v as any);
+    if (n !== null) return n;
+  }
+  return null;
 }
 
 /** Zet één ruwe resultaatrij om naar een Grade, of null als die onbruikbaar is. */
 export function normalizeResult(raw: RawResult): Grade | null {
-  const rawValue =
+  const add: any = raw.additionalObjects ?? {};
+  // De toets-/kolominfo (weging, omschrijving, periode, type) zit in
+  // additionalObjects.resultaatkolom wanneer die is meegevraagd.
+  const kolom: any = add.resultaatkolom ?? {};
+  const kolomAdd: any = kolom.additionalObjects ?? {};
+
+  const rawValue = String(
     raw.geldendResultaat ??
-    raw.resultaat ??
-    raw.resultaatLabelAfkorting ??
-    raw.resultaatLabel ??
-    '';
-  const kind = classifyKind(raw.type);
+      raw.resultaat ??
+      raw.resultaatLabelAfkorting ??
+      raw.resultaatLabel ??
+      ''
+  );
   const value = parseDutchNumber(raw.geldendResultaat ?? raw.resultaat);
-  const weight = typeof raw.weging === 'number' && raw.weging > 0 ? raw.weging : 1;
   if (rawValue === '' && value === null) return null;
 
+  const kind = classifyKind((kolom.type ?? raw.type) as string | undefined);
+  const weight = firstNumber(kolom.weging, kolomAdd.weging, raw.weging) ?? 1;
+
+  const subjectName =
+    add.vaknaam ?? raw.vak?.naam ?? raw.vak?.afkorting ?? kolom.vaknaam ?? 'Onbekend vak';
+  const subjectAbbr =
+    raw.vak?.afkorting ?? add.vakafkorting ?? kolom.afkorting ?? subjectName;
+
+  const description =
+    kolom.omschrijving ?? raw.omschrijving ?? kolom.naam ?? add.naamalternatiefniveau ?? '';
+  const period = firstNumber(kolom.periode, raw.periode);
+  const date =
+    (raw.datumInvoer ??
+      kolom.datumInvoer ??
+      (raw as any).geldendResultaatCijferInvoer ??
+      null) as string | null;
+
   return {
-    id: String(raw.resultaatId ?? `${raw.vak?.afkorting}-${raw.omschrijving}-${raw.datumInvoer}`),
-    subject: raw.vak?.afkorting ?? '??',
-    subjectName: raw.vak?.naam ?? raw.vak?.afkorting ?? 'Onbekend vak',
-    period: typeof raw.periode === 'number' ? raw.periode : null,
+    id: String(
+      raw.resultaatId ??
+        raw.links?.[0]?.id ??
+        `${subjectAbbr}-${description}-${date}`
+    ),
+    subject: subjectAbbr,
+    subjectName,
+    period,
     value,
-    rawValue: String(rawValue),
-    weight,
-    description: raw.omschrijving ?? '',
-    date: raw.datumInvoer ?? null,
+    rawValue,
+    weight: weight > 0 ? weight : 1,
+    description,
+    date,
     counts: raw.teltNietmee !== true,
     kind,
   };

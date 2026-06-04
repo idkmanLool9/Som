@@ -29,64 +29,62 @@ export function getStudentId(student: Student): number | undefined {
  * Haalt alle huidige cijfers (resultaten) van een leerling op.
  * De API geeft max. 100 items per request terug; we pagineren via de Range-header.
  */
+/** Bouwt de query (met herhaalde type=/additional=) voor het cijfer-endpoint. */
+function resultQuery(): string {
+  const p = new URLSearchParams();
+  for (const t of ['Toetskolom', 'DeeltoetsKolom', 'Werkstukcijferkolom', 'Advieskolom']) {
+    p.append('type', t);
+  }
+  for (const a of ['vaknaam', 'resultaatkolom', 'naamalternatiefniveau', 'vakuuid', 'lichtinguuid']) {
+    p.append('additional', a);
+  }
+  p.set('sort', 'desc-geldendResultaatCijferInvoer');
+  return p.toString();
+}
+
 export async function getResults(
   client: SomtodayClient,
   leerlingId: number
 ): Promise<RawResult[]> {
-  // Bekende varianten van het resultaten-endpoint. We proberen ze op volgorde
-  // en gebruiken de eerste die werkt (zodat de app zich aanpast als Somtoday
-  // het endpoint wijzigt).
-  const pathCandidates = [
-    // Token-gescoped (zoals /rest/v1/vakken en /huiswerk die wél werken).
-    '/rest/v1/resultaten',
-    `/rest/v1/resultaten/huidigVoorLeerling/${leerlingId}`,
-    `/rest/v1/resultaten/recentVoorLeerling/${leerlingId}`,
-    `/rest/v1/resultaten/leerling/${leerlingId}`,
+  // Somtoday levert cijfers via het "geldend ... dossier resultaten"-endpoint.
+  // Een leerling heeft een voortgangsdossier (onderbouw) of examendossier
+  // (bovenbouw); we halen beide op en voegen ze samen.
+  const dossiers = [
+    'geldendevoortgangsdossierresultaten',
+    'geldendexamendossierresultaten',
   ];
-  // Query-variant (id als parameter i.p.v. in het pad).
-  const queryCandidates: { path: string; query: Record<string, string> }[] = [
-    { path: '/rest/v1/resultaten', query: { leerling: String(leerlingId) } },
-  ];
-
+  const query = resultQuery();
   const pageSize = 100;
+  const all: RawResult[] = [];
   const tried: string[] = [];
+  let anyOk = false;
 
-  const paginate = async (
-    path: string,
-    query?: Record<string, string>
-  ): Promise<RawResult[] | null> => {
-    const all: RawResult[] = [];
+  for (const dossier of dossiers) {
     let start = 0;
     for (let page = 0; page < 50; page++) {
-      const end = start + pageSize - 1;
+      const path = `/rest/v1/${dossier}/leerling/${leerlingId}?${query}`;
       const res = await client.tryGet<ItemsResponse<RawResult>>(
         path,
-        query,
-        `items=${start}-${end}`
+        undefined,
+        `items=${start}-${start + pageSize - 1}`
       );
       if (page === 0 && !res.ok) {
-        tried.push(`${path} → ${res.status}`);
-        return null; // endpoint bestaat niet; volgende kandidaat proberen
+        tried.push(`${dossier} → ${res.status}`);
+        break; // dit dossier bestaat niet voor deze leerling; volgende proberen
       }
+      anyOk = true;
       if (!res.ok) break;
       const items = res.data?.items ?? [];
       all.push(...items);
       if (items.length < pageSize) break;
       start += pageSize;
     }
-    return all;
-  };
-
-  for (const path of pathCandidates) {
-    const items = await paginate(path);
-    if (items !== null) return items;
-  }
-  for (const { path, query } of queryCandidates) {
-    const items = await paginate(path, query);
-    if (items !== null) return items;
   }
 
-  throw new Error(`Geen werkend cijfer-endpoint gevonden. Geprobeerd: ${tried.join(' | ')}`);
+  if (!anyOk) {
+    throw new Error(`Kon cijfers niet laden. Geprobeerd: ${tried.join(' | ')}`);
+  }
+  return all;
 }
 
 /**

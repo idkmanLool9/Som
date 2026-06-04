@@ -62,6 +62,8 @@ export interface RawResult {
   teltNietmee?: boolean;
   resultaatLabel?: string;
   resultaatLabelAfkorting?: string;
+  // Verrijkte velden via ?additional= (vaknaam, resultaatkolom met weging enz.).
+  additionalObjects?: Record<string, any>;
   [key: string]: unknown;
 }
 
