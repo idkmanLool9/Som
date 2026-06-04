@@ -90,11 +90,11 @@ export class SomtodayClient {
     path: string,
     query?: Record<string, string>,
     range?: string
-  ): Promise<{ ok: boolean; status: number; data: T | null }> {
+  ): Promise<{ ok: boolean; status: number; data: T | null; body?: string }> {
     const res = await this.request(path, query, range);
     if (!res.ok) {
-      await res.text().catch(() => '');
-      return { ok: false, status: res.status, data: null };
+      const body = await res.text().catch(() => '');
+      return { ok: false, status: res.status, data: null, body };
     }
     return { ok: true, status: res.status, data: (await res.json()) as T };
   }

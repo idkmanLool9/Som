@@ -107,6 +107,9 @@ export async function diagnose(
       if (r.ok && r.data) {
         if (Array.isArray(r.data.items)) extra = ` items=${r.data.items.length}`;
         else if (r.data.links) extra = ' obj';
+      } else if (r.body) {
+        // Toon de reden uit de foutrespons (bv. "geen rechten" vs "niet gevonden").
+        extra = ` body=${r.body.replace(/\s+/g, ' ').slice(0, 120)}`;
       }
       lines.push(`${r.status} ${label}${extra}`);
     } catch (e) {
