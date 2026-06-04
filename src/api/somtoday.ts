@@ -13,6 +13,19 @@ export async function getStudents(client: SomtodayClient): Promise<Student[]> {
 }
 
 /**
+ * Bepaalt het leerling-id. Somtoday zet dit meestal niet in een veld, maar in
+ * de "self"-link (`links`). We vallen terug op andere voor de hand liggende
+ * velden voor de zekerheid.
+ */
+export function getStudentId(student: Student): number | undefined {
+  if (typeof student.leerlingId === 'number') return student.leerlingId;
+  const self = student.links?.find((l) => l.rel === 'self');
+  if (self?.id) return self.id;
+  // Laatste redmiddel: de eerste link met een id.
+  return student.links?.find((l) => typeof l.id === 'number')?.id;
+}
+
+/**
  * Haalt alle huidige cijfers (resultaten) van een leerling op.
  * De API geeft max. 100 items per request terug; we pagineren via de Range-header.
  */

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { SomtodayClient } from '../api/client';
-import { getResults, getStudents } from '../api/somtoday';
+import { getResults, getStudentId, getStudents } from '../api/somtoday';
 import type { Student } from '../api/types';
 import {
   groupBySubject,
@@ -33,10 +33,11 @@ export function useGrades(client: SomtodayClient | null): GradesData {
       const students = await getStudents(client);
       const me = students[0] ?? null;
       setStudent(me);
-      if (!me?.leerlingId) {
+      const id = me ? getStudentId(me) : undefined;
+      if (!id) {
         throw new Error('Geen leerling-id gevonden voor dit account.');
       }
-      const raws = await getResults(client, me.leerlingId);
+      const raws = await getResults(client, id);
       setSubjects(groupBySubject(normalizeResults(raws)));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Onbekende fout');
