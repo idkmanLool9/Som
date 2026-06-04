@@ -16,6 +16,11 @@ PORT=8081
 CF_BIN="${TMPDIR:-/tmp}/cloudflared"
 CF_LOG="${TMPDIR:-/tmp}/cloudflared.log"
 
+# 0. Zorg dat dependencies overeenkomen met package.json (na een git pull kunnen
+#    er nieuwe packages bijgekomen zijn die nog niet geïnstalleerd zijn).
+echo "→ Dependencies synchroniseren (npm install)…"
+npm install --no-audit --no-fund
+
 # 1. cloudflared ophalen indien nodig (klein, eenmalig).
 if command -v cloudflared >/dev/null 2>&1; then
   CF_BIN="$(command -v cloudflared)"
